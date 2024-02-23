@@ -119,10 +119,11 @@ class Crowd:
             float("-inf"),
             float("-inf"),
         )
+
         self.resolution = resolution
 
     def is_close(
-        self, person: Person, threshold_x: float = 0.05, threshold_z: float = 0.1
+        self, person: Person, threshold_x: float = 0.05, threshold_z: float = 0.05
     ) -> bool:
         for other in self.people:
             z_diff = abs(person.depth - other.depth) / 255.0
@@ -186,10 +187,10 @@ def init_model():
 
     depth_model = transformers.pipeline(
         task="depth-estimation",
-        model="LiheYoung/depth-anything-small-hf",
+        model="LiheYoung/depth-anything-base-hf",
         device=0 if torch.cuda.is_available() else -1,
     )
-    od_model = YOLO("yolov8n.pt").to("cuda" if torch.cuda.is_available() else "cpu")
+    od_model = YOLO("yolov8m.pt").to("cuda" if torch.cuda.is_available() else "cpu")
 
     while True:
         rs_frames = rs_pipeline.wait_for_frames()
@@ -200,7 +201,7 @@ def init_model():
         color_img = np.asanyarray(rs_color_frame.get_data())
 
         # OD
-        od_preds = od_model.predict(color_img, classes=[56], conf=0.6, device="cuda")
+        od_preds = od_model.predict(color_img, classes=[0], conf=0.6, device="cuda")
         nPeople = len(od_preds[0].boxes)
         od_img = cv2.putText(
             color_img,
@@ -226,6 +227,9 @@ def init_model():
             depth = depth_img[person.y1 : person.y2, person.x1 : person.x2]
             depth = depth[depth != 0]
             person.depth = np.mean(depth)
+
+            print(f"Depth: {person.depth}")
+
             od_img = person.draw(od_img)
 
             if len(crowds) == 0:
