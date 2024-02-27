@@ -123,7 +123,7 @@ class Crowd:
         self.resolution = resolution
 
     def is_close(
-        self, person: Person, threshold_x: float = 0.05, threshold_z: float = 0.05
+        self, person: Person, threshold_x: float = 0.04, threshold_z: float = 0.08
     ) -> bool:
         for other in self.people:
             z_diff = abs(person.depth - other.depth) / 255.0
@@ -135,7 +135,7 @@ class Crowd:
             else:
                 x_diff = 0
 
-            print(f"x_diff: {x_diff}, z_diff: {z_diff}")
+            # print(f"x_diff: {x_diff}, z_diff: {z_diff}")
 
             if x_diff < threshold_x and z_diff < threshold_z:
                 return True
@@ -179,9 +179,9 @@ class Crowd:
 def init_model():
     rs_pipeline = rs.pipeline()
     rs_config = rs.config()
-    resolution = (1920, 1080)
+    resolution = (1920 // 2, 1080 // 2)
     rs_config.enable_stream(
-        rs.stream.color, resolution[0], resolution[1], rs.format.bgr8, 30
+        rs.stream.color, resolution[0], resolution[1], rs.format.bgr8, 15
     )
     rs_pipeline.start(rs_config)
 
@@ -190,7 +190,8 @@ def init_model():
         model="LiheYoung/depth-anything-base-hf",
         device=0 if torch.cuda.is_available() else -1,
     )
-    od_model = YOLO("yolov8m.pt").to("cuda" if torch.cuda.is_available() else "cpu")
+    # od_model = YOLO("yolov8x.pt").to("cuda" if torch.cuda.is_available() else "cpu")
+    od_model = YOLO("yolov8x.engine")
 
     while True:
         rs_frames = rs_pipeline.wait_for_frames()
@@ -206,11 +207,11 @@ def init_model():
         od_img = cv2.putText(
             color_img,
             f"Total Number of people: {nPeople}",
-            (int(resolution[0] // 2 - 500), 100),
+            (int(resolution[0] // 2 - 200), 50),
             cv2.FONT_HERSHEY_SIMPLEX,
-            2,
+            1,
             (0, 255, 0),
-            3,
+            2,
             cv2.LINE_AA,
         )
 
@@ -228,7 +229,7 @@ def init_model():
             depth = depth[depth != 0]
             person.depth = np.mean(depth)
 
-            print(f"Depth: {person.depth}")
+            # print(f"Depth: {person.depth}")
 
             od_img = person.draw(od_img)
 
@@ -260,6 +261,8 @@ def init_model():
         for crowd in crowds:
             if len(crowd.people) > 1:
                 od_img = crowd.draw(od_img, len(crowd.people))
+
+        od_img = cv2.resize(od_img, (resolution[0], resolution[1]))
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
@@ -295,4 +298,4 @@ def update_image():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5555, debug=True)
