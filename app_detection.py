@@ -146,14 +146,25 @@ def init_model():
                     cv2.LINE_AA,
                 )
 
-            cv2.namedWindow("RealSense", cv2.WINDOW_AUTOSIZE)
-            cv2.imshow("RealSense", color_img)
-
-            key = cv2.waitKey(1)
-            # Press esc or 'q' to close the image window
-            if key & 0xFF == ord("q") or key == 27:
-                cv2.destroyAllWindows()
+            if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
+            ret, buffer = cv2.imencode(".jpg", color_img)
+            color_img = buffer.tobytes()
+            yield (
+                b"--frame\r\n" b"Content-Type: image/jpeg\r\n\r\n" + color_img + b"\r\n"
+            )
+
+            # cv2.namedWindow("RealSense", cv2.WINDOW_AUTOSIZE)
+            # cv2.imshow("RealSense", color_img)
+
+            # key = cv2.waitKey(1)
+            # # Press esc or 'q' to close the image window
+            # if key & 0xFF == ord("q") or key == 27:
+            #     cv2.destroyAllWindows()
+            #     break
+
+        # Clear resource.
+        cv2.destroyAllWindows()
 
     finally:
         rs_pipeline.stop()
